@@ -7,15 +7,13 @@ dashedName: step-163
 
 # --description--
 
-After your `numbers` array, create a `while` loop. A <dfn>while</dfn> loop accepts a condition, and will run the code in the block until the condition is no longer true.
+After your `numbers` array, create a `while` loop that runs as long as `numbers.length` is less than `10`.
 
-Your `while` loop should run while `numbers.length` is less than `10`.
-
-Here is an example of a `while` loop that runs while `i` is less than five.
+In the previous project, you learned how to work with `while` loops like this:
 
 ```js
-while (i < 5) {
-
+while (condition) {
+  // code to run
 }
 ```
 
@@ -30,7 +28,7 @@ assert.match(pick.toString(), /while\s*\(/);
 Your `while` loop should run while `numbers.length < 10`.
 
 ```js
-assert.match(pick.toString(), /while\s*\(\s*numbers.length\s*<\s*10\s*\)/);
+assert.match(pick.toString(), /while\s*\(\s*numbers\.length\s*<\s*10\s*\)/);
 ```
 
 # --seed--
@@ -122,7 +120,7 @@ button {
 let xp = 0;
 let health = 100;
 let gold = 50;
-let currentWeapon = 0;
+let currentWeaponIndex = 0;
 let fighting;
 let monsterHealth;
 let inventory = ["stick"];
@@ -195,13 +193,13 @@ const locations = [
     name: "lose",
     "button text": ["REPLAY?", "REPLAY?", "REPLAY?"],
     "button functions": [restart, restart, restart],
-    text: "You die. ☠️"
+    text: "You die. &#x2620;"
   },
   { 
     name: "win", 
     "button text": ["REPLAY?", "REPLAY?", "REPLAY?"], 
     "button functions": [restart, restart, restart], 
-    text: "You defeat the dragon! YOU WIN THE GAME! 🎉" 
+    text: "You defeat the dragon! YOU WIN THE GAME! &#x1F389;" 
   },
   {
     name: "easter egg",
@@ -224,7 +222,7 @@ function update(location) {
   button1.onclick = location["button functions"][0];
   button2.onclick = location["button functions"][1];
   button3.onclick = location["button functions"][2];
-  text.innerText = location.text;
+  text.innerHTML = location.text;
 }
 
 function goTown() {
@@ -251,12 +249,12 @@ function buyHealth() {
 }
 
 function buyWeapon() {
-  if (currentWeapon < weapons.length - 1) {
+  if (currentWeaponIndex < weapons.length - 1) {
     if (gold >= 30) {
       gold -= 30;
-      currentWeapon++;
+      currentWeaponIndex++;
       goldText.innerText = gold;
-      let newWeapon = weapons[currentWeapon].name;
+      let newWeapon = weapons[currentWeaponIndex].name;
       text.innerText = "You now have a " + newWeapon + ".";
       inventory.push(newWeapon);
       text.innerText += " In your inventory you have: " + inventory;
@@ -307,10 +305,10 @@ function goFight() {
 
 function attack() {
   text.innerText = "The " + monsters[fighting].name + " attacks.";
-  text.innerText += " You attack it with your " + weapons[currentWeapon].name + ".";
+  text.innerText += " You attack it with your " + weapons[currentWeaponIndex].name + ".";
   health -= getMonsterAttackValue(monsters[fighting].level);
   if (isMonsterHit()) {
-    monsterHealth -= weapons[currentWeapon].power + Math.floor(Math.random() * xp) + 1;    
+    monsterHealth -= weapons[currentWeaponIndex].power + Math.floor(Math.random() * xp) + 1;    
   } else {
     text.innerText += " You miss.";
   }
@@ -319,11 +317,15 @@ function attack() {
   if (health <= 0) {
     lose();
   } else if (monsterHealth <= 0) {
-    fighting === 2 ? winGame() : defeatMonster();
+    if (fighting === 2) {
+      winGame();
+    } else {
+      defeatMonster();
+    }
   }
   if (Math.random() <= .1 && inventory.length !== 1) {
     text.innerText += " Your " + inventory.pop() + " breaks.";
-    currentWeapon--;
+    currentWeaponIndex--;
   }
 }
 
@@ -361,7 +363,7 @@ function restart() {
   xp = 0;
   health = 100;
   gold = 50;
-  currentWeapon = 0;
+  currentWeaponIndex = 0;
   inventory = ["stick"];
   goldText.innerText = gold;
   healthText.innerText = health;

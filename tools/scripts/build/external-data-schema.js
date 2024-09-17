@@ -7,7 +7,6 @@ const blockSchema = Joi.object({}).keys({
     isUpcomingChange: Joi.bool(),
     usesMultifileEditor: Joi.bool().optional(),
     hasEditableBoundaries: Joi.bool().optional(),
-    isBeta: Joi.bool().optional(),
     dashedName: Joi.string(),
     helpCategory: Joi.valid(
       'JavaScript',
@@ -32,7 +31,8 @@ const blockSchema = Joi.object({}).keys({
       })
     ),
     disableLoopProtectTests: Joi.boolean(),
-    disableLoopProtectPreview: Joi.boolean()
+    disableLoopProtectPreview: Joi.boolean(),
+    superOrder: Joi.number()
   })
 });
 

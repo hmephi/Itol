@@ -165,7 +165,11 @@ class AboutSettings extends Component<AboutProps, AboutState> {
 
   handlePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = (e.target as HTMLInputElement).value.slice(0);
-    if (isURL(value, { require_protocol: true })) {
+    if (!value) {
+      this.setState({
+        isPictureUrlValid: true
+      });
+    } else if (isURL(value, { require_protocol: true })) {
       this.validationImage.src = encodeURI(value);
     } else {
       this.setState({
@@ -267,8 +271,8 @@ class AboutSettings extends Component<AboutProps, AboutState> {
               </FormGroup>
             </div>
             <BlockSaveButton
-              aria-disabled={this.isFormPristine()}
-              bgSize='lg'
+              disabled={this.isFormPristine()}
+              bgSize='large'
               {...(this.isFormPristine() && { tabIndex: -1 })}
             >
               {t('buttons.save')}{' '}
@@ -288,6 +292,7 @@ class AboutSettings extends Component<AboutProps, AboutState> {
           <KeyboardShortcutsSettings
             keyboardShortcuts={keyboardShortcuts}
             toggleKeyboardShortcuts={toggleKeyboardShortcuts}
+            explain={t('settings.shortcuts-explained')}
           />
           <ScrollbarWidthSettings />
         </FullWidthRow>

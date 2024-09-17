@@ -10,13 +10,14 @@ import { bindActionCreators, Dispatch } from 'redux';
 import { createSelector } from 'reselect';
 import { Container, Col, Row } from '@freecodecamp/ui';
 
-import { SuperBlocks } from '../../../../shared/config/superblocks';
+import { SuperBlocks } from '../../../../shared/config/curriculum';
 import { getSuperBlockTitleForMap } from '../../utils/superblock-map-titles';
 import DonateModal from '../../components/Donation/donation-modal';
 import Login from '../../components/Header/components/login';
 import Map from '../../components/Map';
 import { Spacer } from '../../components/helpers';
-import { tryToShowDonationModal, executeGA } from '../../redux/actions';
+import callGA from '../../analytics/call-ga';
+import { tryToShowDonationModal } from '../../redux/actions';
 import {
   isSignedInSelector,
   userSelector,
@@ -24,11 +25,12 @@ import {
   userFetchStateSelector,
   signInLoadingSelector
 } from '../../redux/selectors';
-import { MarkdownRemark, AllChallengeNode, User } from '../../redux/prop-types';
-import { defaultDonation } from '../../../../shared/config/donation-settings';
+import type { AllChallengeNode, User } from '../../redux/prop-types';
+import { CertTitle } from '../../../config/cert-and-project-map';
 import Block from './components/block';
 import CertChallenge from './components/cert-challenge';
 import LegacyLinks from './components/legacy-links';
+import HelpTranslate from './components/help-translate';
 import SuperBlockIntro from './components/super-block-intro';
 import { resetExpansion, toggleBlock } from './redux';
 
@@ -43,7 +45,6 @@ type FetchState = {
 type SuperBlockProp = {
   currentChallengeId: string;
   data: {
-    markdownRemark: MarkdownRemark;
     allChallengeNode: AllChallengeNode;
   };
   expandedState: {
@@ -53,11 +54,15 @@ type SuperBlockProp = {
   isSignedIn: boolean;
   signInLoading: boolean;
   location: WindowLocation<{ breadcrumbBlockClick: string }>;
+  pageContext: {
+    superBlock: SuperBlocks;
+    title: CertTitle;
+    certification: string;
+  };
   resetExpansion: () => void;
   toggleBlock: (arg0: string) => void;
   tryToShowDonationModal: () => void;
   user: User;
-  executeGA: (payload: Record<string, unknown>) => void;
 };
 
 configureAnchors({ offset: -40, scrollDuration: 0 });
@@ -88,7 +93,6 @@ const mapStateToProps = (state: Record<string, unknown>) => {
 const mapDispatchToProps = (dispatch: Dispatch) =>
   bindActionCreators(
     {
-      executeGA,
       tryToShowDonationModal,
       resetExpansion,
       toggleBlock: b => toggleBlock(b)
@@ -165,17 +169,18 @@ const SuperBlockIntroductionPage = (props: SuperBlockProp) => {
 
   const {
     data: {
-      markdownRemark: {
-        frontmatter: { superBlock, title, certification }
-      },
       allChallengeNode: { edges }
     },
     isSignedIn,
     signInLoading,
-    user
+    user,
+    pageContext: { superBlock, title, certification }
   } = props;
 
-  const nodesForSuperBlock = edges.map(({ node }) => node);
+  const allChallenges = edges.map(({ node }) => node.challenge);
+  const nodesForSuperBlock = edges
+    .filter(edge => edge.node.challenge.superBlock === superBlock)
+    .map(({ node }) => node);
   const blockDashedNames = uniq(
     nodesForSuperBlock.map(({ challenge: { block } }) => block)
   );
@@ -194,11 +199,9 @@ const SuperBlockIntroductionPage = (props: SuperBlockProp) => {
   ];
 
   const onCertificationDonationAlertClick = () => {
-    props.executeGA({
+    callGA({
       event: 'donation_related',
-      action: `Certification Donation Alert Click`,
-      duration: defaultDonation.donationDuration,
-      amount: defaultDonation.donationAmount
+      action: `Certification Donation Alert Click`
     });
   };
 
@@ -220,6 +223,7 @@ const SuperBlockIntroductionPage = (props: SuperBlockProp) => {
                 }
                 isDonating={user.isDonating}
               />
+              <HelpTranslate superBlock={superBlock} />
               <Spacer size='large' />
               <h2 className='text-center big-subheading'>
                 {t(`intro:misc-text.courses`)}
@@ -259,7 +263,7 @@ const SuperBlockIntroductionPage = (props: SuperBlockProp) => {
                 {t(`intro:misc-text.browse-other`)}
               </h3>
               <Spacer size='medium' />
-              <Map />
+              <Map allChallenges={allChallenges} />
               <Spacer size='large' />
             </Col>
           </Row>
@@ -278,14 +282,7 @@ export default connect(
 )(withTranslation()(memo(SuperBlockIntroductionPage)));
 
 export const query = graphql`
-  query SuperBlockIntroPageBySlug($slug: String!, $superBlock: String!) {
-    markdownRemark(fields: { slug: { eq: $slug } }) {
-      frontmatter {
-        certification
-        superBlock
-        title
-      }
-    }
+  query SuperBlockIntroPageQuery {
     allChallengeNode(
       sort: {
         fields: [
@@ -294,7 +291,6 @@ export const query = graphql`
           challenge___challengeOrder
         ]
       }
-      filter: { challenge: { superBlock: { eq: $superBlock } } }
     ) {
       edges {
         node {
@@ -310,6 +306,7 @@ export const query = graphql`
             order
             superBlock
             dashedName
+            blockType
           }
         }
       }

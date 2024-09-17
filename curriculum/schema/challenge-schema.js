@@ -2,6 +2,7 @@ const Joi = require('joi');
 Joi.objectId = require('joi-objectid')(Joi);
 
 const { challengeTypes } = require('../../shared/config/challenge-types');
+const { SuperBlocks } = require('../../shared/config/curriculum');
 const {
   availableCharacters,
   availableBackgrounds,
@@ -83,16 +84,27 @@ const commandJoi = Joi.object().keys({
 
 const schema = Joi.object()
   .keys({
-    audioPath: Joi.string(),
     block: Joi.string().regex(slugRE).required(),
     blockId: Joi.objectId(),
+    blockType: Joi.when('superBlock', {
+      is: [SuperBlocks.FrontEndDevelopment],
+      then: Joi.valid(
+        'workshop',
+        'lab',
+        'lecture',
+        'review',
+        'quiz',
+        'exam'
+      ).required(),
+      otherwise: Joi.valid(null)
+    }),
     challengeOrder: Joi.number(),
-    removeComments: Joi.bool().required(),
     certification: Joi.string().regex(slugWithSlashRE),
-    challengeType: Joi.number().min(0).max(22).required(),
+    challengeType: Joi.number().min(0).max(23).required(),
     checksum: Joi.number(),
     // TODO: require this only for normal challenges, not certs
     dashedName: Joi.string().regex(slugRE),
+    demoType: Joi.string().valid('onClick', 'onLoad'),
     description: Joi.when('challengeType', {
       is: [
         challengeTypes.step,
@@ -200,21 +212,22 @@ const schema = Joi.object()
     superBlock: Joi.string().regex(slugWithSlashRE),
     superOrder: Joi.number(),
     suborder: Joi.number(),
-    tests: Joi.array().items(
-      // public challenges
-      Joi.object().keys({
-        id: Joi.string().allow(''),
-        text: Joi.string().required(),
-        testString: Joi.string().allow('').required()
-      }),
-      // our tests used in certification verification
-      Joi.object().keys({
-        id: Joi.string().required(),
-        title: Joi.string().required()
-      })
-    ),
+    tests: Joi.array()
+      .items(
+        // public challenges
+        Joi.object().keys({
+          id: Joi.string().allow(''),
+          text: Joi.string().required(),
+          testString: Joi.string().allow('').required()
+        }),
+        // our tests used in certification verification
+        Joi.object().keys({
+          id: Joi.string().required(),
+          title: Joi.string().required()
+        })
+      )
+      .required(),
     template: Joi.string().allow(''),
-    time: Joi.string().allow(''),
     title: Joi.string().required(),
     translationPending: Joi.bool().required(),
     url: Joi.when('challengeType', {

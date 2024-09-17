@@ -1,44 +1,87 @@
 import React, { useEffect, useState, useRef } from 'react'; //, ReactElement } from 'react';
 import { Col } from '@freecodecamp/ui';
+import { useTranslation } from 'react-i18next';
 import { FullScene } from '../../../../redux/prop-types';
-import { Loader } from '../../../../components/helpers';
+import { Loader, Spacer } from '../../../../components/helpers';
 import ClosedCaptionsIcon from '../../../../assets/icons/closedcaptions';
-import { sounds, images, backgrounds } from './scene-assets';
+import { sounds, images, backgrounds, characterAssets } from './scene-assets';
 import Character from './character';
 
 import './scene.css';
 
-export function Scene({ scene }: { scene: FullScene }): JSX.Element {
+const sToMs = (n: number) => {
+  return n * 1000;
+};
+
+const loadImage = (src: string | null) => {
+  if (src) new Image().src = src;
+};
+
+export function Scene({
+  scene,
+  isPlaying,
+  setIsPlaying
+}: {
+  scene: FullScene;
+  isPlaying: boolean;
+  setIsPlaying: (shouldPlay: boolean) => void;
+}): JSX.Element {
+  const { t } = useTranslation();
   const { setup, commands } = scene;
   const { audio, alwaysShowDialogue } = setup;
+  const { startTimestamp = null, finishTimestamp = null } = audio;
 
-  const audioTimestamp =
-    audio.startTimestamp !== null && audio.finishTimestamp !== null
-      ? `#t=${audio.startTimestamp},${audio.finishTimestamp}`
-      : '';
+  const hasTimestamps = startTimestamp !== null && finishTimestamp !== null;
+  const audioTimestamp = hasTimestamps ? `#t=${startTimestamp}` : '';
 
-  const audioRef = useRef<HTMLAudioElement>(
-    new Audio(`${sounds}/${audio.filename}${audioTimestamp}`)
-  );
+  const audioRef = useRef<HTMLAudioElement>(new Audio());
+
+  // if there are timestamps, we use the difference between them as the duration
+  // if not, we assume we're playing the whole audio file.
+  const duration = hasTimestamps
+    ? sToMs(finishTimestamp - startTimestamp)
+    : Infinity;
 
   // on mount
   useEffect(() => {
     const { current } = audioRef;
-    current.addEventListener('canplaythrough', audioLoaded);
+
+    if (current) {
+      current.addEventListener('canplaythrough', audioLoaded);
+      current.src = `${sounds}/${audio.filename}${audioTimestamp}`;
+      current.load();
+    }
+
+    // preload images
+    loadImage(`${backgrounds}/${setup.background}`);
+
+    setup.characters
+      .map(({ character }) => Object.values(characterAssets[character]))
+      .flat()
+      .forEach(loadImage);
+
+    commands
+      .map(({ background }) =>
+        background ? `${backgrounds}/${background}` : null
+      )
+      .forEach(loadImage);
 
     // on unmount
     return () => {
-      const { current } = audioRef;
-
-      current.pause();
-      current.currentTime = 0;
-      current.removeEventListener('canplaythrough', audioLoaded);
+      if (current) {
+        current.pause();
+        current.currentTime = 0;
+        current.removeEventListener('canplaythrough', audioLoaded);
+      }
     };
-  }, [audioRef]);
-
-  const audioLoaded = () => {
-    setSceneIsReady(true);
-  };
+  }, [
+    audioRef,
+    audio.filename,
+    audioTimestamp,
+    setup.background,
+    setup.characters,
+    commands
+  ]);
 
   const initBackground = setup.background;
   const initDialogue = { label: '', text: '', align: 'left' };
@@ -50,24 +93,57 @@ export function Scene({ scene }: { scene: FullScene }): JSX.Element {
     };
   });
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [sceneIsReady, setSceneIsReady] = useState(true);
+  const [sceneIsReady, setSceneIsReady] = useState(false);
   const [showDialogue, setShowDialogue] = useState(false);
   const [accessibilityOn, setAccessibilityOn] = useState(false);
   const [characters, setCharacters] = useState(initCharacters);
   const [dialogue, setDialogue] = useState(initDialogue);
   const [background, setBackground] = useState(initBackground);
 
+  useEffect(() => {
+    if (isPlaying) {
+      playScene();
+    } else {
+      resetScene();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
+
+  const audioLoaded = () => {
+    setSceneIsReady(true);
+  };
+
+  let start = 0;
+  let stopAudio = false;
+
+  // this function exists because we couldn't reliably stop the audio when
+  // playing only part of the audio file. So it would get cut off
+  function maybeStopAudio() {
+    const runningTime = Date.now() - start;
+
+    if (runningTime >= duration) {
+      stopAudio = true;
+      audioRef.current.pause();
+    }
+
+    if (!stopAudio) {
+      window.requestAnimationFrame(maybeStopAudio);
+    }
+  }
+
   const playScene = () => {
-    setIsPlaying(true);
     setShowDialogue(true);
 
-    commands.forEach((command, commandIndex) => {
-      // Start audio timeout
-      setTimeout(function () {
+    setTimeout(() => {
+      if (audioRef.current.paused) {
+        start = Date.now();
         void audioRef.current.play();
-      }, audio.startTime * 1000);
+      }
+      // if there are no timestamps, we can let the audio play to the end
+      if (hasTimestamps) maybeStopAudio();
+    }, sToMs(audio.startTime));
 
+    commands.forEach((command, commandIndex) => {
       // Start command timeout
       setTimeout(() => {
         if (command.background) setBackground(command.background);
@@ -92,7 +168,7 @@ export function Scene({ scene }: { scene: FullScene }): JSX.Element {
           });
           return newCharacters;
         });
-      }, command.startTime * 1000);
+      }, sToMs(command.startTime));
 
       // Finish command timeout, only used when there's a dialogue
       if (command.dialogue) {
@@ -111,7 +187,7 @@ export function Scene({ scene }: { scene: FullScene }): JSX.Element {
               return newCharacters;
             });
           },
-          (command.finishTime as number) * 1000
+          sToMs(command.finishTime as number)
         );
       }
 
@@ -119,21 +195,26 @@ export function Scene({ scene }: { scene: FullScene }): JSX.Element {
       if (commandIndex === commands.length - 1) {
         setTimeout(
           () => {
-            finishScene();
+            setIsPlaying(false);
           },
+          // an extra 500ms at the end to let the characters fade out (CSS transition)
           command.finishTime
-            ? command.finishTime * 1000 + 500
-            : command.startTime * 1000 + 500
+            ? sToMs(command.finishTime) + 500
+            : sToMs(command.startTime) + 500
         );
       }
     });
   };
 
-  const finishScene = () => {
-    audioRef.current.pause();
-    audioRef.current.src = `${sounds}/${audio.filename}${audioTimestamp}`;
-    audioRef.current.currentTime = audio.startTimestamp || 0;
-    setIsPlaying(false);
+  const resetScene = () => {
+    const { current } = audioRef;
+    if (current) {
+      current.pause();
+      current.src = `${sounds}/${audio.filename}${audioTimestamp}`;
+      current.load();
+      current.currentTime = audio.startTimestamp || 0;
+    }
+
     setShowDialogue(false);
     setDialogue(initDialogue);
     setCharacters(initCharacters);
@@ -189,15 +270,20 @@ export function Scene({ scene }: { scene: FullScene }): JSX.Element {
               <div className='scene-start-screen'>
                 <button
                   className='scene-start-btn scene-play-btn'
-                  onClick={playScene}
+                  onClick={() => {
+                    setIsPlaying(true);
+                  }}
                 >
-                  <img src={`${images}/play-button.png`} alt='Press Play' />
+                  <img
+                    src={`${images}/play-button.png`}
+                    alt={t('buttons.play-scene')}
+                  />
                 </button>
 
                 {!alwaysShowDialogue && (
                   <button
                     className='scene-start-btn scene-a11y-btn'
-                    aria-label='closed captions'
+                    aria-label={t('buttons.closed-caption')}
                     aria-pressed={accessibilityOn}
                     onClick={() => setAccessibilityOn(!accessibilityOn)}
                   >
@@ -213,6 +299,7 @@ export function Scene({ scene }: { scene: FullScene }): JSX.Element {
           </>
         )}
       </div>
+      <Spacer size='medium' />
     </Col>
   );
 }

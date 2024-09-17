@@ -1,16 +1,14 @@
-import { Row, Col, Button } from '@freecodecamp/react-bootstrap';
 import { useLocation } from '@reach/router';
 
 import React, { type FormEvent, useEffect } from 'react';
 import Helmet from 'react-helmet';
-import { withTranslation, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
-import { Container } from '@freecodecamp/ui';
+import { Container, Row, Col, Button } from '@freecodecamp/ui';
 import BigCallToAction from '../components/landing/components/big-call-to-action';
 
 import { Spacer } from '../components/helpers';
-import './update-email.css';
 import {
   isSignedInSelector,
   isDonatingSelector,
@@ -145,7 +143,4 @@ function UpdateStripeCard({
 
 UpdateStripeCard.displayName = 'Update-Stripe-Card';
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(withTranslation()(UpdateStripeCard));
+export default connect(mapStateToProps, mapDispatchToProps)(UpdateStripeCard);

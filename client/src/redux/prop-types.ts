@@ -1,5 +1,6 @@
 import { HandlerProps } from 'react-reflex';
-import { SuperBlocks } from '../../../shared/config/superblocks';
+import { SuperBlocks } from '../../../shared/config/curriculum';
+import { BlockTypes } from '../../../shared/config/blocks';
 import { Themes } from '../components/settings/theme';
 import { type CertTitle } from '../../config/cert-and-project-map';
 
@@ -18,33 +19,15 @@ export type CurrentCert = {
 };
 
 export type MarkdownRemark = {
-  fields: [{ component: string; nodeIdentity: string; slug: string }];
-  fileAbsolutePath: string;
   frontmatter: {
     block: string;
-    isBeta: boolean;
     superBlock: SuperBlocks;
     // TODO: make enum like superBlock
     certification: string;
     title: CertTitle;
   };
-  headings: [
-    {
-      depth: number;
-      value: string;
-      id: string;
-    }
-  ];
   html: string;
-  htmlAst: Record<string, unknown>;
   id: string;
-  rawMarkdownBody: string;
-  timeToRead: number;
-  wordCount: {
-    paragraphs: number;
-    sentences: number;
-    words: number;
-  };
 };
 
 export type MultipleChoiceAnswer = {
@@ -115,7 +98,10 @@ export type Characters =
   | 'Anna'
   | 'Bob'
   | 'Brian'
+  | 'Candidate'
   | 'David'
+  | 'Delivery Man'
+  | 'Expert'
   | 'Jake'
   | 'James'
   | 'Linda'
@@ -123,6 +109,7 @@ export type Characters =
   | 'Maria'
   | 'Mark'
   | 'Sarah'
+  | 'Second Candidate'
   | 'Sophie'
   | 'Tom';
 
@@ -155,6 +142,7 @@ export interface FullScene {
 export interface PrerequisiteChallenge {
   id: string;
   title: string;
+  slug?: string;
 }
 
 export type ChallengeWithCompletedNode = {
@@ -173,12 +161,13 @@ export type ChallengeWithCompletedNode = {
 
 export type ChallengeNode = {
   challenge: {
-    audioPath: string;
     block: string;
+    blockType: BlockTypes;
     certification: string;
     challengeOrder: number;
     challengeType: number;
     dashedName: string;
+    demoType: 'onClick' | 'onLoad' | null;
     description: string;
     challengeFiles: ChallengeFiles;
     fields: Fields;
@@ -204,7 +193,6 @@ export type ChallengeNode = {
     msTrophyId: string;
     notes: string;
     prerequisites: PrerequisiteChallenge[];
-    removeComments: boolean;
     isLocked: boolean;
     isPrivate: boolean;
     order: number;
@@ -221,7 +209,6 @@ export type ChallengeNode = {
     tail: string[];
     template: string;
     tests: Test[];
-    time: string;
     title: string;
     translationPending: boolean;
     url: string;
@@ -242,7 +229,7 @@ export type CertificateNode = {
 };
 
 export type AllChallengesInfo = {
-  challengeEdges: { node: ChallengeNode }[];
+  challengeNodes: ChallengeNode[];
   certificateNodes: CertificateNode[];
 };
 
@@ -356,11 +343,14 @@ export type SavedChallenge = {
   challengeFiles: SavedChallengeFiles;
 };
 
+// TODO: remove unused properties and stop returning them from api? (e.g.
+// history, ext, name)
 export type SavedChallengeFile = {
   fileKey: string;
   ext: Ext;
   name: string;
   history?: string[];
+  editableRegionBoundaries?: number[];
   contents: string;
 };
 
@@ -388,7 +378,6 @@ export type ChallengeMeta = {
   isFirstStep: boolean;
   nextChallengePath: string | null;
   prevChallengePath: string | null;
-  removeComments: boolean;
   superBlock: SuperBlocks;
   title?: string;
   challengeType?: number;
@@ -421,7 +410,7 @@ export type ChallengeFile = {
   name: string;
   editableRegionBoundaries?: number[];
   usesMultifileEditor?: boolean;
-  error: null | string;
+  error?: unknown;
   head: string;
   tail: string;
   seed: string;

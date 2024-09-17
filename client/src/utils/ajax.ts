@@ -11,6 +11,7 @@ import type {
   SurveyResults,
   User
 } from '../redux/prop-types';
+import { DonationDuration } from '../../../shared/config/donation-settings';
 
 const { apiLocation } = envData;
 
@@ -36,7 +37,10 @@ export interface ResponseWithData<T> {
 // TODO: Might want to handle flash messages as close to the request as possible
 // to make use of the Response object (message, status, etc)
 async function get<T>(path: string): Promise<ResponseWithData<T>> {
-  const response = await fetch(`${base}${path}`, defaultOptions);
+  const response = await fetch(`${base}${path}`, {
+    ...defaultOptions,
+    headers: { 'CSRF-Token': getCSRFToken() }
+  });
 
   return combineDataWithResponse(response);
 }
@@ -55,7 +59,7 @@ export function post<T = void>(
 
 function put<T = void>(
   path: string,
-  body?: unknown
+  body: unknown
 ): Promise<ResponseWithData<T>> {
   return request('PUT', path, body);
 }
@@ -239,7 +243,7 @@ export function addDonation(body: Donation): Promise<ResponseWithData<void>> {
 }
 
 export function updateStripeCard() {
-  return put('/donate/update-stripe-card');
+  return put('/donate/update-stripe-card', {});
 }
 
 export function postChargeStripe(
@@ -253,6 +257,31 @@ export function postChargeStripeCard(
 ): Promise<ResponseWithData<void>> {
   return post('/donate/charge-stripe-card', body);
 }
+
+type PaymentIntentResponse = Promise<
+  ResponseWithData<
+    | {
+        clientSecret?: never;
+        subscriptionId?: never;
+        error: string;
+      }
+    | {
+        clientSecret: string;
+        subscriptionId: string;
+        error?: never;
+      }
+  >
+>;
+
+export function createStripePaymentIntent(body: {
+  email: string | undefined;
+  name: string | undefined;
+  amount: number;
+  duration: DonationDuration;
+}): PaymentIntentResponse {
+  return post('/donate/create-stripe-payment-intent', body);
+}
+
 interface Report {
   username: string;
   reportDescription: string;

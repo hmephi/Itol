@@ -1,5 +1,4 @@
-import { Button } from '@freecodecamp/react-bootstrap';
-import { Link, navigate } from 'gatsby';
+import { navigate } from 'gatsby';
 import { find } from 'lodash-es';
 import React, { MouseEvent, useState } from 'react';
 import { withTranslation } from 'react-i18next';
@@ -7,7 +6,7 @@ import type { TFunction } from 'i18next';
 import { createSelector } from 'reselect';
 import ScrollableAnchor, { configureAnchors } from 'react-scrollable-anchor';
 import { connect } from 'react-redux';
-import { Table } from '@freecodecamp/ui';
+import { Table, Button } from '@freecodecamp/ui';
 
 import { regeneratePathAndHistory } from '../../../../shared/utils/polyvinyl';
 import ProjectPreviewModal from '../../templates/Challenges/components/project-preview-modal';
@@ -22,7 +21,7 @@ import {
 } from '../../../config/cert-and-project-map';
 import { FlashMessages } from '../Flash/redux/flash-messages';
 import ProjectModal from '../SolutionViewer/project-modal';
-import { FullWidthRow, Spacer } from '../helpers';
+import { FullWidthRow, Spacer, Link } from '../helpers';
 import { SolutionDisplayWidget } from '../solution-display-widget';
 import {
   Certification,
@@ -115,7 +114,7 @@ const isCertMapSelector = createSelector(
     isJsAlgoDataStructCertV8
   }) => ({
     'Responsive Web Design': isRespWebDesignCert,
-    'JavaScript Algorithms and Data Structures': isJsAlgoDataStructCert,
+    'Legacy JavaScript Algorithms and Data Structures': isJsAlgoDataStructCert,
     'Front End Development Libraries': isFrontEndLibsCert,
     'Data Visualization': is2018DataVisCert,
     'Back End Development and APIs': isApisMicroservicesCert,
@@ -131,11 +130,11 @@ const isCertMapSelector = createSelector(
     'Legacy Data Visualization': isDataVisCert,
     'Legacy Back End': isBackEndCert,
     'Legacy Information Security and Quality Assurance': isInfosecQaCert,
-    // TODO: remove Example Certification? Also, include Upcoming Python
     // Certification.
-    'Example Certification': false,
+    'Front End Development': false,
     'Upcoming Python Certification': false,
     'A2 English for Developers': false,
+    'B1 English for Developers': false,
     'JavaScript Algorithms and Data Structures (Beta)': isJsAlgoDataStructCertV8
   })
 );
@@ -180,12 +179,6 @@ const LegacyFullStack = (props: CertificationSettingsProps) => {
   const certSlug = Certification.LegacyFullStack;
   const certLocation = `/certification/${username}/${certSlug}`;
 
-  const buttonStyle = {
-    marginBottom: '30px',
-    padding: '6px 12px',
-    fontSize: '18px'
-  };
-
   const createClickHandler =
     (certSlug: keyof typeof certSlugTypeMap) =>
     (e: MouseEvent<HTMLButtonElement>) => {
@@ -225,31 +218,47 @@ const LegacyFullStack = (props: CertificationSettingsProps) => {
         </ul>
       </div>
 
-      <div className={'col-xs-12'}>
+      <div>
         {fullStackClaimable ? (
           <Button
-            bsSize='sm'
-            bsStyle='primary'
-            className={'col-xs-12'}
+            size='small'
+            variant='primary'
+            block={true}
             href={certLocation}
             id={'button-' + certSlug}
+            // This floating promise is acceptable
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
             onClick={createClickHandler(certSlug)}
-            style={buttonStyle}
             target='_blank'
           >
-            {isFullStackCert ? t('buttons.show-cert') : t('buttons.claim-cert')}
+            {isFullStackCert ? (
+              <>
+                {t('buttons.show-cert')}{' '}
+                <span className='sr-only'>
+                  {t('certification.title.Legacy Full Stack')}
+                </span>
+              </>
+            ) : (
+              <>
+                {t('buttons.claim-cert')}{' '}
+                <span className='sr-only'>
+                  {t('certification.title.Legacy Full Stack')}
+                </span>
+              </>
+            )}
           </Button>
         ) : (
           <Button
-            bsSize='sm'
-            bsStyle='primary'
-            className={'col-xs-12'}
+            size='small'
+            variant='primary'
+            block={true}
             disabled={true}
             id={'button-' + certSlug}
-            style={buttonStyle}
-            target='_blank'
           >
-            {t('buttons.claim-cert')}
+            {t('buttons.claim-cert')}{' '}
+            <span className='sr-only'>
+              {t('certification.title.Legacy Full Stack')}
+            </span>
           </Button>
         )}
       </div>
@@ -323,7 +332,6 @@ function CertificationSettings(props: CertificationSettingsProps) {
     return (
       <SolutionDisplayWidget
         completedChallenge={completedProject}
-        dataCy={projectTitle}
         projectTitle={projectTitle}
         showExamResults={showExamResults}
         showUserCode={showUserCode}
@@ -342,26 +350,30 @@ function CertificationSettings(props: CertificationSettingsProps) {
   }) => {
     const { certSlug } = certsToProjects[certName][0];
     return (
-      <FullWidthRow>
-        <Spacer size='medium' />
-        <h3 className='text-center' id={`cert-${certSlug}`}>
-          {t(`certification.title.${certName}`, certName)}
-        </h3>
-        <Table>
-          <thead>
-            <tr>
-              <th>{t('settings.labels.project-name')}</th>
-              <th>{t('settings.labels.solution')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <ProjectsFor
-              certName={certName}
-              isCert={getUserIsCertMap()[certName]}
-            />
-          </tbody>
-        </Table>
-      </FullWidthRow>
+      <ScrollableAnchor id={`cert-${certSlug}`}>
+        <section>
+          <FullWidthRow>
+            <Spacer size='medium' />
+            <h3 className='text-center'>
+              {t(`certification.title.${certName}`, certName)}
+            </h3>
+            <Table>
+              <thead>
+                <tr>
+                  <th>{t('settings.labels.project-name')}</th>
+                  <th>{t('settings.labels.solution')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <ProjectsFor
+                  certName={certName}
+                  isCert={getUserIsCertMap()[certName]}
+                />
+              </tbody>
+            </Table>
+          </FullWidthRow>
+        </section>
+      </ScrollableAnchor>
     );
   };
 
@@ -388,12 +400,12 @@ function CertificationSettings(props: CertificationSettingsProps) {
       <>
         {certsToProjects[certName].map(({ link, title, id }) => (
           <tr className='project-row' key={id}>
-            <td className='project-title col-sm-8 col-xs-8'>
+            <td className='project-title col-xs-8'>
               <Link to={link}>
                 {t(`certification.project.title.${title}`, title)}
               </Link>
             </td>
-            <td className='project-solution col-sm-4 col-xs-4'>
+            <td className='project-solution col-xs-4'>
               {getProjectSolution(id, title)}
             </td>
           </tr>
@@ -402,10 +414,11 @@ function CertificationSettings(props: CertificationSettingsProps) {
           <td colSpan={2}>
             <Button
               block={true}
-              bsStyle='primary'
-              className={'col-xs-12'}
+              variant='primary'
               href={certLocation}
-              data-cy={`btn-for-${certSlug}`}
+              data-playwright-test-label={`btn-for-${certSlug}`}
+              // This floating promise is acceptable
+              // eslint-disable-next-line @typescript-eslint/no-misused-promises
               onClick={clickHandler}
             >
               {isCert ? t('buttons.show-cert') : t('buttons.claim-cert')}{' '}
@@ -420,42 +433,37 @@ function CertificationSettings(props: CertificationSettingsProps) {
   const { t } = props;
 
   return (
-    <ScrollableAnchor id='certification-settings'>
-      <section className='certification-settings'>
-        <SectionHeader>{t('settings.headings.certs')}</SectionHeader>
-        {currentCertTitles.map(title => (
+    <section className='certification-settings'>
+      <SectionHeader>{t('settings.headings.certs')}</SectionHeader>
+      {currentCertTitles.map(title => (
+        <Certification key={title} certName={title} t={t} />
+      ))}
+      <Spacer size='medium' />
+      <SectionHeader>{t('settings.headings.legacy-certs')}</SectionHeader>
+      <LegacyFullStack {...props} />
+      {legacyCertTitles.map(title => (
+        <Certification key={title} certName={title} t={t} />
+      ))}
+      {showUpcomingChanges &&
+        upcomingCertTitles.map(title => (
           <Certification key={title} certName={title} t={t} />
         ))}
-        <SectionHeader>{t('settings.headings.legacy-certs')}</SectionHeader>
-        <LegacyFullStack {...props} />
-        {legacyCertTitles.map(title => (
-          <Certification key={title} certName={title} t={t} />
-        ))}
-        {showUpcomingChanges &&
-          upcomingCertTitles.map(title => (
-            <Certification key={title} certName={title} t={t} />
-          ))}
-        <ProjectModal
-          {...{
-            projectTitle,
-            challengeFiles,
-            solution: solution ?? undefined,
-            isOpen
-          }}
-          handleSolutionModalHide={handleSolutionModalHide}
-        />
-        <ProjectPreviewModal
-          challengeData={challengeData}
-          previewTitle={projectTitle}
-          closeText={t('buttons.close')}
-          showProjectPreview={true}
-        />
-        <ExamResultsModal
-          projectTitle={projectTitle}
-          examResults={examResults}
-        />
-      </section>
-    </ScrollableAnchor>
+      <ProjectModal
+        {...{
+          projectTitle,
+          challengeFiles,
+          solution: solution ?? undefined,
+          isOpen
+        }}
+        handleSolutionModalHide={handleSolutionModalHide}
+      />
+      <ProjectPreviewModal
+        challengeData={challengeData}
+        previewTitle={projectTitle}
+        closeText={t('buttons.close')}
+      />
+      <ExamResultsModal projectTitle={projectTitle} examResults={examResults} />
+    </section>
   );
 }
 

@@ -6,7 +6,7 @@ import ScrollableAnchor from 'react-scrollable-anchor';
 import { bindActionCreators, Dispatch } from 'redux';
 import { createSelector } from 'reselect';
 
-import { SuperBlocks } from '../../../../../shared/config/superblocks';
+import { SuperBlocks } from '../../../../../shared/config/curriculum';
 import envData from '../../../../config/env.json';
 import { isAuditedSuperBlock } from '../../../../../shared/utils/is-audited';
 import Caret from '../../../assets/icons/caret';
@@ -19,17 +19,9 @@ import { completedChallengesSelector } from '../../../redux/selectors';
 import { ChallengeNode, CompletedChallenge } from '../../../redux/prop-types';
 import { playTone } from '../../../utils/tone';
 import { makeExpandedBlockSelector, toggleBlock } from '../redux';
-import {
-  isCollegeAlgebraPyCert,
-  isNewJsCert,
-  isSciCompPyCert,
-  isNewRespCert
-} from '../../../utils/is-a-cert';
-import {
-  isCodeAllyPractice,
-  isFinalProject
-} from '../../../../../shared/config/challenge-types';
+import { isGridBased, isProjectBased } from '../../../utils/curriculum-layout';
 import Challenges from './challenges';
+
 import '../intro.css';
 
 const { curriculumLocale, showUpcomingChanges, showNewCurriculum } = envData;
@@ -119,22 +111,16 @@ class Block extends Component<BlockProps> {
     });
 
     const isProjectBlock = challenges.some(({ challenge }) => {
-      const isTakeHomeProject = blockDashedName === 'take-home-projects';
-
-      const projectCondition = [
-        isFinalProject(challenge.challengeType),
-        isCodeAllyPractice(challenge.challengeType)
-      ].some(Boolean);
-
-      return projectCondition && !isTakeHomeProject;
+      return isProjectBased(challenge.challengeType, blockDashedName);
     });
 
-    const isGridBlock = [
-      isNewRespCert(superBlock),
-      isNewJsCert(superBlock),
-      isCollegeAlgebraPyCert(superBlock),
-      isSciCompPyCert(superBlock) && !isProjectBlock
-    ].some(Boolean);
+    const isGridBlock = challenges.some(({ challenge }) => {
+      return isGridBased({
+        superBlock,
+        challengeType: challenge.challengeType,
+        blockType: challenge.blockType
+      });
+    });
 
     const isAudited = isAuditedSuperBlock(curriculumLocale, superBlock, {
       showNewCurriculum,
@@ -268,8 +254,8 @@ class Block extends Component<BlockProps> {
             <h3 className='block-grid-title'>
               <button
                 aria-expanded={isExpanded ? 'true' : 'false'}
+                aria-controls={`${blockDashedName}-panel`}
                 className='block-header'
-                data-cy={challengesWithCompleted[0].block}
                 onClick={() => {
                   this.handleBlockClick();
                 }}
@@ -290,24 +276,26 @@ class Block extends Component<BlockProps> {
                   progressBarRender}
               </button>
             </h3>
-            <div className='tags-wrapper'>
-              {!isAudited && (
+            {!isAudited && (
+              <div className='tags-wrapper'>
                 <Link
                   className='cert-tag'
                   to={t('links:help-translate-link-url')}
                 >
                   {t('misc.translation-pending')}
                 </Link>
-              )}
-            </div>
-            {isExpanded && <BlockIntros intros={blockIntroArr} />}
+              </div>
+            )}
             {isExpanded && (
-              <Challenges
-                challengesWithCompleted={challengesWithCompleted}
-                isProjectBlock={isProjectBlock}
-                isGridMap={true}
-                blockTitle={blockTitle}
-              />
+              <div id={`${blockDashedName}-panel`}>
+                <BlockIntros intros={blockIntroArr} />
+                <Challenges
+                  challengesWithCompleted={challengesWithCompleted}
+                  isProjectBlock={isProjectBlock}
+                  isGridMap={true}
+                  blockTitle={blockTitle}
+                />
+              </div>
             )}
           </div>
         </ScrollableAnchor>
